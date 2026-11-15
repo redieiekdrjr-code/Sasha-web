@@ -13,13 +13,20 @@ let userName=localStorage.getItem('igrogram_user_name');
 if(!userName){userName=(prompt('Как вас называть в IGROgram?')||'Пользователь').trim().slice(0,32)||'Пользователь';localStorage.setItem('igrogram_user_name',userName)}
 function timeOf(value){return new Date(value).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
 function connect(){
- if(typeof io!=='function'){$('#chatStatus').textContent='Сервер недоступен';return}
- socket=io({auth:{name:userName}});
- socket.on('connect',()=>{if(active)joinActive()});
- socket.on('disconnect',()=>{if(active)$('#chatStatus').textContent='Переподключение…'});
- socket.on('connect_error',()=>{if(active)$('#chatStatus').textContent='Нет соединения'});
- socket.on('igro:history',data=>{if(active&&data.chatId===active.id){$('#messages').innerHTML='<div class="day">История чата</div>';data.messages.forEach(addMessage);scrollMessages()}});
- socket.on('igro:message',message=>{const chat=chats.find(c=>c.id===message.chatId);if(chat){chat.msg=message.text;chat.time=timeOf(message.createdAt)}if(active&&active.id===message.chatId){addMessage(message);scrollMessages()}else render()});
+ const scheme=location.protocol==='https:'?'wss:':'ws:';
+ socket=new WebSocket(scheme+'//'+location.host+'/ws');
+ socket.onopen=()=>{if(active)joinActive()};
+ socket.onclose=()=>{if(active)$('#chatStatus').textContent='Соединение потеряно'};
+ socket.onerror=()=>{if(active)$('#chatStatus').textContent='Нет соединения'};
+ socket.onmessage=e=>{
+  let data;try{data=JSON.parse(e.data)}catch{return}
+  if(data.type==='history'&&active&&data.chatId===active.id){$('#messages').innerHTML='<div class="day">История чата</div>';data.messages.forEach(addMessage);scrollMessages()}
+  if(data.type==='message'){
+   const message=data.message,chat=chats.find(c=>c.id===message.chatId);
+   if(chat){chat.msg=message.text;chat.time=timeOf(message.createdAt)}
+   if(active&&active.id===message.chatId){addMessage(message);scrollMessages()}else render()
+  }
+ };
 }
 function render(){
  const q=$('#search').value.toLowerCase(),tab=document.querySelector('.tab.active').dataset.tab;
@@ -36,13 +43,12 @@ function addMessage(m){
 }
 function scrollMessages(){$('#messages').scrollTop=$('#messages').scrollHeight}
 function joinActive(){
- if(!socket||!socket.connected||!active)return;
- socket.emit('igro:join',{chatId:active.id});
- $('#chatStatus').textContent='онлайн · сервер подключён';
+ if(!socket||socket.readyState!==WebSocket.OPEN||!active)return;
+ socket.send(JSON.stringify({type:'join',chatId:active.id}));
+ $('#chatStatus').textContent='онлайн · Cloudflare подключён';
 }
 async function openChat(id){
  const next=chats.find(c=>c.id===id);if(!next)return;
- if(active&&socket)socket.emit('igro:leave',{chatId:active.id});
  active=next;$('#chatName').textContent=active.name;$('#chatAvatar').textContent=active.avatar;$('#chatAvatar').style.background=active.color;
  $('#messages').innerHTML='<div class="day">Загрузка истории…</div>';
  $('#conversation').classList.remove('hidden');$('#list').classList.add('hidden');$('.tabs').classList.add('hidden');$('.search').classList.add('hidden');$('.top').classList.add('hidden');
@@ -50,8 +56,8 @@ async function openChat(id){
  try{const response=await fetch('/api/igrogram/messages/'+encodeURIComponent(id));if(!response.ok)throw Error('API');const history=await response.json();if(active?.id===id){$('#messages').innerHTML='<div class="day">История чата</div>';history.forEach(addMessage);scrollMessages()}}
  catch(e){$('#messages').innerHTML='<div class="day">Не удалось загрузить историю. Проверьте подключение к серверу.</div>'}
 }
-$('#back').onclick=()=>{if(active&&socket)socket.emit('igro:leave',{chatId:active.id});active=null;$('#conversation').classList.add('hidden');$('#list').classList.remove('hidden');$('.tabs').classList.remove('hidden');$('.search').classList.remove('hidden');$('.top').classList.remove('hidden');render()};
-$('#composer').onsubmit=e=>{e.preventDefault();const input=$('#messageInput'),text=input.value.trim();if(!text||!active)return;if(!socket||!socket.connected){$('#chatStatus').textContent='Нет соединения с сервером';return}socket.emit('igro:send',{chatId:active.id,text,senderId:userId,senderName:userName});input.value=''};
+$('#back').onclick=()=>{active=null;$('#conversation').classList.add('hidden');$('#list').classList.remove('hidden');$('.tabs').classList.remove('hidden');$('.search').classList.remove('hidden');$('.top').classList.remove('hidden');render()};
+$('#composer').onsubmit=e=>{e.preventDefault();const input=$('#messageInput'),text=input.value.trim();if(!text||!active)return;if(!socket||socket.readyState!==WebSocket.OPEN){$('#chatStatus').textContent='Нет соединения с сервером';return}socket.send(JSON.stringify({type:'send',chatId:active.id,text,senderId:userId,senderName:userName}));input.value=''};
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelector('.tab.active').classList.remove('active');b.classList.add('active');render()});
 $('#search').oninput=render;$('#searchToggle').onclick=()=>$('#search').focus();$('#menu').onclick=()=>$('#drawer').classList.toggle('hidden');
 $('#drawer').onclick=e=>{if(e.target===$('#drawer'))$('#drawer').classList.add('hidden')};
