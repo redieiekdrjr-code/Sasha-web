@@ -13,7 +13,10 @@
       { "name": "CHAT_HUB", "class_name": "ChatHub" }
     ]
   },
-  "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["ChatHub"] }
-  ]
+  "exports": {
+    "ChatHub": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
 }
