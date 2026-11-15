@@ -1,3 +1,5 @@
+import { DurableObject } from "cloudflare:workers";
+
 const CHAT_LIST = [
   { id: "saved", name: "Избранное", avatar: "★", color: "#6da9d3", type: "personal", description: "Сохранённые сообщения" },
   { id: "news", name: "IGROgram Новости", avatar: "I", color: "#4f9bce", type: "groups", description: "Объявления проекта" },
@@ -43,8 +45,9 @@ export default {
   }
 };
 
-export class ChatHub {
+export class ChatHub extends DurableObject {
   constructor(ctx, env) {
+    super(ctx, env);
     this.ctx = ctx;
     this.env = env;
     this.sql = ctx.storage.sql;
