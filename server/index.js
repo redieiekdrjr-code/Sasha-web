@@ -41,6 +41,8 @@ function auth(req, res, next) {
 }
 const sign = user => jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: "30d" });
 
+app.get("/", (_req, res) => res.json({ ok: true, service: "SABLOX API" }));
+
 app.get("/api/health", asyncRoute(async (_req, res) => {
   await pool.query("SELECT 1");
   res.json({ ok: true, service: "SABLOX API", database: "connected" });
