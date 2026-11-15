@@ -19,7 +19,7 @@ public class MainActivity extends Activity {
         web.getSettings().setDomStorageEnabled(true);
         web.getSettings().setMediaPlaybackRequiresUserGesture(false);
         setContentView(web);
-        web.loadUrl("file:///android_asset/index.html");
+        web.loadUrl("file:///android_asset/sablox/index.html");
     }
     @Override public void onBackPressed() {
         if (web != null && web.canGoBack()) web.goBack(); else super.onBackPressed();
