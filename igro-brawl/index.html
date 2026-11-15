@@ -30,6 +30,12 @@
   .play{bottom:86px}
   .event{top:68px}
 }
+
+/* Refined menus and touch feedback */
+button:active{filter:brightness(1.18);transform:translateY(2px)}
+.modal{max-height:88%;overflow:auto}.choice small{display:block;opacity:.85;font-size:11px;margin-top:3px}
+.statrow{display:flex;justify-content:space-between;gap:12px;padding:7px 10px;margin:5px 0;background:#0e315b88;border-radius:9px}
+@media(orientation:portrait){.modalShade{padding:8px}.modal{width:min(440px,90vh);max-height:88vw}}
 </style></head><body>
 <section id="lobby" class="screen active"><div class="top"><div class="brand">IGRO BRAWL</div><div class="resources"><div class="res">🪙 <b id="coins">1250</b></div><div class="res">💎 35 ＋</div><div class="res">🎟️ 8</div></div></div>
 <div class="profile" onclick="openPanel('ПРОФИЛЬ')">👤 ИГРОК <b>#IGRO01</b><br>🏆 <span id="trophies">1280</span> кубков</div>
@@ -42,18 +48,49 @@
 <div id="panel" class="modalShade" onclick="if(event.target===this)closePanel()"><div class="modal"><h2 id="panelTitle">МЕНЮ</h2><div id="panelBody"></div><button class="close" onclick="closePanel()">ЗАКРЫТЬ</button></div></div>
 <script>
 const $=id=>document.getElementById(id);let arena=$('arena'),ctx=arena.getContext('2d'),running=false,player,bots=[],shots=[],enemyShots=[],score=0,hp=100,stick={x:0,y:0},last=0,cd=0,superReady=true,world={w:1200,h:760};
-function openPanel(name){$('panelTitle').textContent=name;let data={БОЙЦЫ:'🥊 БРУНО — СИЛА 5<br>🔒 Луна — скоро<br>🔒 Рокки — скоро',МАГАЗИН:'🪙 Ежедневная награда<br>🎁 Ящик бойца — скоро<br>💎 Особые предложения', 'БРАВЛ ПАСС':'🎫 Сезон IGRO: Путь героев<br>Награды открываются за победы.',КЛУБ:'🛡️ Создай клуб или найди друзей.',ДРУЗЬЯ:'👥 Список друзей пока пуст.',ПРОФИЛЬ:'ИГРОК #IGRO01<br>🏆 1280 кубков<br>🥇 Лучший результат: '+score,СОБЫТИЕ:'🌵 СТОЛКНОВЕНИЕ<br>Карта: Дикая пустыня<br>Собирай усилители и побеждай!'};$('panelBody').innerHTML=(data[name]||'Скоро в игре')+'<button class="choice" onclick="startBattle();closePanel()">▶ НАЧАТЬ БОЙ</button>';$('panel').style.display='grid'}function closePanel(){$('panel').style.display='none'}
+const saveKey='igro_brawl_save_v2';
+let save={coins:1250,trophies:1280,wins:0,best:0,brawler:0,claimed:false};
+try{save={...save,...JSON.parse(localStorage.getItem(saveKey)||'{}')}}catch(e){}
+const brawlers=[{name:'БРУНО',power:5,color:'#38a9ed',hp:100,speed:260,damage:35},{name:'ЛУНА',power:4,color:'#b77bea',hp:115,speed:235,damage:30},{name:'РОККИ',power:6,color:'#e7a342',hp:135,speed:215,damage:42}];
+let mode='СТОЛКНОВЕНИЕ';
+function persist(){localStorage.setItem(saveKey,JSON.stringify(save));$('coins').textContent=save.coins;$('trophies').textContent=save.trophies;$('heroName').textContent=brawlers[save.brawler].name+' · БОЕЦ'}
+persist();
+function openPanel(name){
+ $('panelTitle').textContent=name;let body='';
+ if(name==='БОЙЦЫ'){
+  body=brawlers.map((b,i)=>'<button class="choice" onclick="selectBrawler('+i+')">'+(save.brawler===i?'⭐ ':'')+b.name+' · СИЛА '+b.power+'<small>Здоровье '+b.hp+' · Скорость '+b.speed+'</small></button>').join('');
+ }else if(name==='МАГАЗИН'){
+  body='<div class="statrow"><span>Монеты</span><b>🪙 '+save.coins+'</b></div><button class="choice" onclick="dailyReward()">🎁 Забрать ежедневную награду<small>+100 монет · один раз за сохранение</small></button><button class="choice" onclick="buyCoins()">🪙 Набор бойца · 250 монет<small>Внутриигровая покупка за накопленные монеты</small></button>';
+ }else if(name==='БРАВЛ ПАСС'){
+  body='<div class="statrow"><span>Победы сезона</span><b>'+save.wins+'</b></div><p>🎫 Путь героев</p><p>За каждую победу начисляются монеты и кубки.</p>';
+ }else if(name==='КЛУБ'){
+  body='<p>🛡️ Клуб IGRO LEGENDS</p><div class="statrow"><span>Участники</span><b>1 / 30</b></div><p>Клубная система пока локальная — онлайн-участников ещё нет.</p>';
+ }else if(name==='ДРУЗЬЯ'){
+  body='<p>👥 Друзья</p><p>Пока ты один в списке. Для настоящих приглашений нужен сетевой сервер.</p><div class="statrow"><span>Твой тег</span><b>#IGRO01</b></div>';
+ }else if(name==='ПРОФИЛЬ'){
+  body='<div class="statrow"><span>Игрок</span><b>#IGRO01</b></div><div class="statrow"><span>Кубки</span><b>🏆 '+save.trophies+'</b></div><div class="statrow"><span>Победы</span><b>'+save.wins+'</b></div><div class="statrow"><span>Рекорд фрагов</span><b>'+save.best+'</b></div>';
+ }else if(name==='СОБЫТИЕ'){
+  body='<button class="choice" onclick="setMode(0)">🌵 СТОЛКНОВЕНИЕ<small>Выживание против пяти ботов</small></button><button class="choice" onclick="setMode(1)">💎 СБОР КРИСТАЛЛОВ<small>Тренировочный режим — скоро</small></button>';
+ }
+ $('panelBody').innerHTML=body+'<button class="choice" onclick="startBattle()">▶ ИГРАТЬ · '+mode+'</button>';
+ $('panel').style.display='grid';
+}
+function selectBrawler(i){save.brawler=i;persist();openPanel('БОЙЦЫ')}
+function setMode(i){mode=i===0?'СТОЛКНОВЕНИЕ':'СБОР КРИСТАЛЛОВ';openPanel('СОБЫТИЕ')}
+function dailyReward(){if(save.claimed){$('panelBody').insertAdjacentHTML('afterbegin','<p>Награда уже получена!</p>');return}save.claimed=true;save.coins+=100;persist();openPanel('МАГАЗИН')}
+function buyCoins(){if(save.coins<250){$('panelBody').insertAdjacentHTML('afterbegin','<p>Не хватает монет.</p>');return}save.coins-=250;persist();$('panelBody').insertAdjacentHTML('afterbegin','<p>Покупка оформлена! Это пока тестовая валюта.</p>')}
+function closePanel(){$('panel').style.display='none'}
 function gameWidth(){return innerWidth>innerHeight?innerWidth:innerHeight}function gameHeight(){return innerWidth>innerHeight?innerHeight:innerWidth}function resize(){let d=Math.min(devicePixelRatio||1,2),w=gameWidth(),h=gameHeight();arena.width=w*d;arena.height=h*d;ctx.setTransform(d,0,0,d,0,0)}addEventListener('resize',resize);resize();
-function spawn(){player={x:600,y:380,r:24};hp=100;score=0;shots=[];enemyShots=[];bots=[];for(let i=0;i<5;i++){let a=i*Math.PI*2/5;bots.push({x:600+Math.cos(a)*390,y:380+Math.sin(a)*270,r:23,hp:100,cd:Math.random()})} $('hpText').textContent=hp;$('battleScore').textContent=score}
+function spawn(){let selected=brawlers[save.brawler];player={x:600,y:380,r:24,color:selected.color};hp=selected.hp;score=0;shots=[];enemyShots=[];bots=[];for(let i=0;i<5;i++){let a=i*Math.PI*2/5;bots.push({x:600+Math.cos(a)*390,y:380+Math.sin(a)*270,r:23,hp:100,cd:Math.random()})} $('hpText').textContent=hp;$('battleScore').textContent=score}
 function startBattle(){closePanel();$('lobby').classList.remove('active');$('battle').classList.add('active');resize();spawn();running=true;last=0;try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{})}catch(e){}requestAnimationFrame(loop)}
-function backLobby(){running=false;$('battle').classList.remove('active');$('lobby').classList.add('active')}
+function backLobby(){running=false;stick.x=stick.y=0;$('battle').classList.remove('active');$('lobby').classList.add('active');persist()}
 function fire(){if(!running||cd>0)return;cd=.28;let t=bots.sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y))[0];if(!t)return;let a=Math.atan2(t.y-player.y,t.x-player.x);shots.push({x:player.x,y:player.y,vx:Math.cos(a)*680,vy:Math.sin(a)*680,life:1.2});}
 $('attack').addEventListener('pointerdown',e=>{e.preventDefault();fire()});
 function useSuper(){if(!running||!superReady)return;superReady=false;for(let b of bots){if(Math.hypot(b.x-player.x,b.y-player.y)<330)b.hp-=70}bots=bots.filter(b=>b.hp>0);setTimeout(()=>superReady=true,5000)}
 function loop(ts){if(!running)return;let dt=Math.min((ts-last)/1000||0,.04);last=ts;update(dt);draw();requestAnimationFrame(loop)}
-function update(dt){let dx=stick.x,dy=stick.y;player.x=Math.max(25,Math.min(world.w-25,player.x+dx*260*dt));player.y=Math.max(25,Math.min(world.h-25,player.y+dy*260*dt));cd-=dt;
+function update(dt){let dx=stick.x,dy=stick.y;player.x=Math.max(25,Math.min(world.w-25,player.x+dx*brawlers[save.brawler].speed*dt));player.y=Math.max(25,Math.min(world.h-25,player.y+dy*brawlers[save.brawler].speed*dt));cd-=dt;
 for(let b of bots){let x=player.x-b.x,y=player.y-b.y,d=Math.hypot(x,y)||1;if(d>210){b.x+=x/d*70*dt;b.y+=y/d*70*dt}b.cd-=dt;if(d<440&&b.cd<0){enemyShots.push({x:b.x,y:b.y,vx:x/d*250,vy:y/d*250,life:2});b.cd=1.5+Math.random()}if(d<48){hp-=12*dt;$('hpText').textContent=Math.max(0,Math.round(hp))}}
-enemyShots=enemyShots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;if(Math.hypot(s.x-player.x,s.y-player.y)<player.r+7){hp-=12;$('hpText').textContent=Math.max(0,Math.round(hp));return false}return s.life>0});shots=shots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;for(let b of bots)if(Math.hypot(s.x-b.x,s.y-b.y)<b.r+8){b.hp-=35;if(b.hp<=0){b.dead=true;score++;$('battleScore').textContent=score}return false}return s.life>0});bots=bots.filter(b=>!b.dead);if(hp<=0||bots.length===0){running=false;setTimeout(()=>{alert(hp>0?'ПОБЕДА!':'ПОРАЖЕНИЕ');backLobby()},50)}}
+enemyShots=enemyShots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;if(Math.hypot(s.x-player.x,s.y-player.y)<player.r+7){hp-=12;$('hpText').textContent=Math.max(0,Math.round(hp));return false}return s.life>0});shots=shots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;for(let b of bots)if(Math.hypot(s.x-b.x,s.y-b.y)<b.r+8){b.hp-=brawlers[save.brawler].damage;if(b.hp<=0){b.dead=true;score++;$('battleScore').textContent=score}return false}return s.life>0});bots=bots.filter(b=>!b.dead);if(hp<=0||bots.length===0){running=false;let won=hp>0; if(won){save.wins++;save.trophies+=8;save.coins+=35;save.best=Math.max(save.best,score);persist()}setTimeout(()=>{alert(won?'ПОБЕДА! +8 кубков · +35 монет':'ПОРАЖЕНИЕ');backLobby()},50)}}
 function draw(){let w=gameWidth(),h=gameHeight(),s=Math.min(w/900,h/560),vw=w/s,vh=h/s,cx=Math.max(vw/2,Math.min(world.w-vw/2,player.x)),cy=Math.max(vh/2,Math.min(world.h-vh/2,player.y));ctx.clearRect(0,0,w,h);ctx.save();ctx.translate(w/2,h/2);ctx.scale(s,s);ctx.translate(-cx,-cy);ctx.fillStyle='#31965b';ctx.fillRect(0,0,world.w,world.h);ctx.strokeStyle='#b6e994';ctx.lineWidth=18;ctx.strokeRect(8,8,world.w-16,world.h-16);
 for(let i=0;i<180;i++){let x=(i*137)%world.w,y=(i*211)%world.h;ctx.fillStyle='#3ba968';ctx.beginPath();ctx.arc(x,y,4,0,7);ctx.fill()}
 let walls=[[270,190,100,80],[820,180,110,90],[500,510,130,75],[130,480,100,90],[990,470,100,90]];for(let [x,y,a,b] of walls){ctx.fillStyle='#8d5738';ctx.fillRect(x,y,a,b);ctx.fillStyle='#c88b50';ctx.fillRect(x+8,y+8,a-16,b-16)}
