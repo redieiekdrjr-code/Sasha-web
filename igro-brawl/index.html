@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#101a2b"><title>IGRO Brawl — Prototype</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101a2b;color:#fff;font-family:system-ui,Arial;touch-action:none}
+#game{display:block;width:100vw;height:100vh;background:#16283a}
+.hud{position:fixed;inset:0;pointer-events:none;padding:12px;display:flex;justify-content:space-between;align-items:flex-start;text-shadow:0 2px 3px #000}
+.panel{background:#0b1422d9;border:1px solid #ffffff28;border-radius:14px;padding:9px 13px;font-weight:800}
+#health{height:9px;width:150px;background:#3b2730;border-radius:10px;overflow:hidden;margin-top:6px}#hp{height:100%;width:100%;background:#54df80}
+#hint{position:fixed;top:12px;left:50%;transform:translateX(-50%);font-size:12px;color:#d6e4f2;background:#0b1422b8;padding:7px 12px;border-radius:20px;pointer-events:none;white-space:nowrap}
+.controls{position:fixed;inset:auto 0 18px;display:flex;justify-content:space-between;align-items:end;padding:0 24px;pointer-events:none}
+#stick{width:116px;height:116px;border-radius:50%;background:#ffffff20;border:2px solid #ffffff55;position:relative;pointer-events:auto}
+#nub{width:48px;height:48px;border-radius:50%;background:#dceeffbb;position:absolute;left:32px;top:32px;box-shadow:0 3px 10px #0008}
+#attack{width:86px;height:86px;border-radius:50%;border:4px solid #ffffff80;background:linear-gradient(#ffca52,#e87921);color:#47220a;font-weight:1000;font-size:17px;box-shadow:0 5px 0 #9b4816;pointer-events:auto}
+#attack:active{transform:scale(.94)}
+#overlay{position:fixed;inset:0;background:#08111bdc;display:grid;place-items:center;padding:20px}
+.modal{max-width:420px;width:100%;background:#182b40;border:1px solid #ffffff30;border-radius:22px;padding:24px;text-align:center;box-shadow:0 20px 70px #0009}
+h1{margin:0 0 8px;font-size:32px;letter-spacing:1px}p{color:#c1d1e2;line-height:1.45}.primary{border:0;border-radius:14px;padding:14px 28px;background:#ffbd45;color:#38200a;font-weight:1000;font-size:17px}
+#result{font-size:23px;font-weight:900;margin:10px}
+@media(orientation:portrait){#hint:after{content:" · поверни телефон горизонтально"}}
+</style></head>
+<body>
+<canvas id="game"></canvas>
+<div class="hud"><div class="panel">IGRO BRAWL<br><small id="status">Подготовка арены</small><div id="health"><div id="hp"></div></div></div><div class="panel">⭐ <span id="score">0</span><br><small>ПОБЕДЫ</small></div></div>
+<div id="hint">Управление: левый джойстик · кнопка атаки справа</div>
+<div class="controls"><div id="stick"><div id="nub"></div></div><button id="attack">УДАР</button></div>
+<div id="overlay"><div class="modal"><h1>IGRO BRAWL</h1><div style="color:#ffca58;font-weight:900">АРЕНА • ПРОТОТИП 0.1</div><p>Сражайся с ботами, уклоняйся от атак и собирай победы. Это самостоятельная тестовая игра с оригинальной графикой.</p><div id="result"></div><button class="primary" id="start">НАЧАТЬ БОЙ</button></div></div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),hpbar=document.getElementById('hp'),scoreEl=document.getElementById('score'),statusEl=document.getElementById('status'),overlay=document.getElementById('overlay'),resultEl=document.getElementById('result');
+let W=0,H=0,worldW=1200,worldH=760,player,bots=[],shots=[],score=0,running=false,last=0,attackCd=0,stick={x:0,y:0},keys={};
+function resize(){const d=Math.min(devicePixelRatio||1,2);W=canvas.width=Math.floor(innerWidth*d);H=canvas.height=Math.floor(innerHeight*d);canvas.style.width=innerWidth+'px';canvas.style.height=innerHeight+'px';ctx.setTransform(d,0,0,d,0,0);W=innerWidth;H=innerHeight}
+addEventListener('resize',resize);resize();
+function spawn(){player={x:worldW/2,y:worldH/2,r:22,hp:100,max:100,speed:245,face:0,hit:0};bots=[];shots=[];for(let i=0;i<5;i++){let a=i*Math.PI*2/5;bots.push({x:worldW/2+Math.cos(a)*330,y:worldH/2+Math.sin(a)*230,r:20,hp:65,max:65,speed:82+Math.random()*25,cd:Math.random(),hit:0})}}
+function roundRect(x,y,w,h,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function drawChar(o,color,accent){ctx.save();ctx.translate(o.x,o.y);ctx.fillStyle='#0006';ctx.beginPath();ctx.ellipse(0,15,o.r*1.1,o.r*.55,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,o.r,0,Math.PI*2);ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=accent;ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(7,-5,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#182333';ctx.beginPath();ctx.arc(9,-5,2.5,0,Math.PI*2);ctx.fill();ctx.restore();if(o.hp<o.max){roundRect(o.x-23,o.y-o.r-13,46,6,4,'#3b2730');roundRect(o.x-23,o.y-o.r-13,46*Math.max(0,o.hp/o.max),6,4,'#57e181')}}
+function draw(){ctx.clearRect(0,0,W,H);let scale=Math.min(W/worldW,H/worldH),ox=(W-worldW*scale)/2,oy=(H-worldH*scale)/2;ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);
+ctx.fillStyle='#294b43';ctx.fillRect(0,0,worldW,worldH);
+ctx.strokeStyle='#ffffff0c';ctx.lineWidth=2;for(let x=0;x<worldW;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,worldH);ctx.stroke()}for(let y=0;y<worldH;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(worldW,y);ctx.stroke()}
+for(let i=0;i<18;i++){let x=(i*197+73)%worldW,y=(i*113+55)%worldH;roundRect(x,y,42,38,9,'#35685a');roundRect(x+7,y+7,28,24,6,'#3d7963')}
+if(player){for(const s of shots){ctx.fillStyle='#ffd36c';ctx.beginPath();ctx.arc(s.x,s.y,7,0,Math.PI*2);ctx.fill()}bots.forEach(b=>drawChar(b,'#e96b66','#ffb0a5'));drawChar(player,'#59a9ff','#b5e3ff')}
+ctx.restore()}
+function update(dt){if(!running)return;let ix=stick.x,iy=stick.y;if(keys.ArrowLeft||keys.a)ix-=1;if(keys.ArrowRight||keys.d)ix+=1;if(keys.ArrowUp||keys.w)iy-=1;if(keys.ArrowDown||keys.s)iy+=1;let m=Math.hypot(ix,iy);if(m>1){ix/=m;iy/=m}if(m>.05){player.x+=ix*player.speed*dt;player.y+=iy*player.speed*dt;player.face=Math.atan2(iy,ix)}player.x=Math.max(28,Math.min(worldW-28,player.x));player.y=Math.max(28,Math.min(worldH-28,player.y));attackCd-=dt;player.hit=Math.max(0,player.hit-dt);
+bots.forEach((b,i)=>{b.hit=Math.max(0,b.hit-dt);let dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1;if(d>52){b.x+=dx/d*b.speed*dt;b.y+=dy/d*b.speed*dt}else{b.cd-=dt;if(b.cd<=0){player.hp-=9;b.cd=1.05;player.hit=.15}}});
+shots=shots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;for(let b of bots){if(Math.hypot(s.x-b.x,s.y-b.y)<b.r+8){b.hp-=34;b.hit=.12;if(b.hp<=0){b.dead=true;score++;scoreEl.textContent=score}return false}}return s.life>0});bots=bots.filter(b=>!b.dead);
+if(player.hp<=0){end(false);return}if(!bots.length){end(true);return}hpbar.style.width=Math.max(0,player.hp/player.max*100)+'%';statusEl.textContent='Бой идёт · ботов: '+bots.length}
+function fire(){if(!running||attackCd>0)return;attackCd=.34;let target=null,best=1e9;for(let b of bots){let d=Math.hypot(b.x-player.x,b.y-player.y);if(d<best){best=d;target=b}}if(!target)return;let a=Math.atan2(target.y-player.y,target.x-player.x);shots.push({x:player.x+Math.cos(a)*25,y:player.y+Math.sin(a)*25,vx:Math.cos(a)*570,vy:Math.sin(a)*570,life:.85})}
+function end(win){running=false;statusEl.textContent=win?'Арена очищена':'Боец выбыл';resultEl.textContent=win?'ПОБЕДА!':'ПОРАЖЕНИЕ';document.getElementById('start').textContent='ЕЩЁ РАЗ';overlay.style.display='grid'}
+function loop(t){let dt=Math.min((t-last)/1000||0,.04);last=t;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+document.getElementById('start').onclick=()=>{score=0;scoreEl.textContent='0';spawn();running=true;overlay.style.display='none';statusEl.textContent='Бой идёт · ботов: '+bots.length;hpbar.style.width='100%'};
+const stickEl=document.getElementById('stick'),nub=document.getElementById('nub');let pointer=null;
+function moveStick(e){let r=stickEl.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),len=Math.hypot(dx,dy),max=39;if(len>max){dx=dx/len*max;dy=dy/len*max}stick.x=dx/max;stick.y=dy/max;nub.style.left=(32+dx)+'px';nub.style.top=(32+dy)+'px'}
+stickEl.addEventListener('pointerdown',e=>{pointer=e.pointerId;stickEl.setPointerCapture(pointer);moveStick(e)});stickEl.addEventListener('pointermove',e=>{if(e.pointerId===pointer)moveStick(e)});function release(){pointer=null;stick.x=stick.y=0;nub.style.left='32px';nub.style.top='32px'}stickEl.addEventListener('pointerup',release);stickEl.addEventListener('pointercancel',release);
+document.getElementById('attack').addEventListener('pointerdown',e=>{e.preventDefault();fire()});addEventListener('keydown',e=>{keys[e.key]=true;if(e.key===' '){e.preventDefault();fire()}});addEventListener('keyup',e=>keys[e.key]=false);
+})();
+</script></body></html>
