@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#527da3"><title>IGROgram</title><link rel="stylesheet" href="style.css"></head>
+<body><header class="top"><button id="menu" aria-label="Меню">☰</button><div class="brand">IGROgram</div><button id="searchToggle" aria-label="Поиск">⌕</button></header>
+<div class="search"><input id="search" placeholder="Поиск" autocomplete="off"></div>
+<nav class="tabs"><button class="tab active" data-tab="all">Все чаты</button><button class="tab" data-tab="personal">Личные</button><button class="tab" data-tab="groups">Группы</button></nav>
+<main id="list" class="list"></main>
+<section id="conversation" class="conversation hidden"><header class="chathead"><button id="back">‹</button><div class="avatar" id="chatAvatar">И</div><div class="chatmeta"><b id="chatName">Чат</b><small id="chatStatus">был(а) недавно</small></div><button>⋮</button></header><div class="messages" id="messages"></div><form id="composer"><button type="button" id="attach">＋</button><input id="messageInput" placeholder="Сообщение" autocomplete="off"><button class="send" type="submit">➤</button></form></section>
+<aside id="drawer" class="drawer hidden"><div class="drawerTop"><div class="bigAvatar">И</div><b>IGROgram</b><small>Ваш мессенджер</small></div><button>👤　Мой профиль</button><button>👥　Контакты</button><button>📞　Звонки</button><button>⭐　Избранное</button><button>⚙️　Настройки</button><div class="drawerFoot">IGROgram · версия 1.0</div></aside>
+<script src="app.js"></script></body></html>
