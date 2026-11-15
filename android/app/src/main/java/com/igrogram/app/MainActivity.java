@@ -10,9 +10,6 @@ import android.widget.EditText;
 import android.widget.Toast;
 import android.content.SharedPreferences;
 import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
-import android.content.Context;
-import android.view.inputmethod.EditorInfo;
 
 public class MainActivity extends Activity {
     private WebView web;
@@ -29,24 +26,24 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient());
         web.setWebChromeClient(new WebChromeClient());
         setContentView(web);
-        String saved = prefs.getString("server", "https://sashaweb-o1lws0zt.back4.app");
-        openServer(saved);
+        String saved = prefs.getString("server", null);
+        if (saved == null) askServer(); else openServer(saved);
     }
 
     private void askServer() {
         final EditText input = new EditText(this);
         input.setSingleLine(true);
-        input.setHint("https://ваш-сервер.example");
-        input.setInputType( android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        input.setHint("https://igrogram.<поддомен>.workers.dev");
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
         new AlertDialog.Builder(this)
             .setTitle("Подключение IGROgram")
-            .setMessage("Введите адрес опубликованного сервера. Например: https://example.onrender.com")
+            .setMessage("Введите постоянный адрес Cloudflare Workers после публикации.")
             .setView(input)
             .setCancelable(false)
             .setPositiveButton("Подключить", (dialog, which) -> {
                 String url = input.getText().toString().trim();
-                if (!url.startsWith("https://")) {
-                    Toast.makeText(this, "Нужен адрес, начинающийся с https://", Toast.LENGTH_LONG).show();
+                if (!url.startsWith("https://") || !url.endsWith("workers.dev")) {
+                    Toast.makeText(this, "Введите HTTPS-адрес workers.dev", Toast.LENGTH_LONG).show();
                     askServer();
                     return;
                 }
@@ -59,8 +56,7 @@ public class MainActivity extends Activity {
 
     private void openServer(String base) {
         String url = base.replaceAll("/+$", "");
-        if (!url.endsWith("/igrogram")) url += "/igrogram";
-        web.loadUrl(url + "/");
+        web.loadUrl(url + "/igrogram/");
     }
 
     @Override public void onBackPressed() {
