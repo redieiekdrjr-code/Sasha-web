@@ -22,7 +22,7 @@ function save(){
   catch(e){console.error('Database save failed:',e.message);}
 }
 function clean(value,max=40){
-  return String(value||'').replace(/[<>\\u0000-\\u001f]/g,'').trim().slice(0,max);
+  return String(value||'').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,max);
 }
 const chatIds=new Set(['saved','news','alex','dev','maria']);
 function validChat(id){return typeof id==='string'&&(/^[a-z0-9_-]{1,48}$/i).test(id);}
