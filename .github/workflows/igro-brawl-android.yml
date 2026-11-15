@@ -32,6 +32,12 @@ jobs:
         working-directory: igro-brawl
         run: npm install
 
+      - name: Prepare web assets
+        working-directory: igro-brawl
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+
       - name: Generate Android project
         working-directory: igro-brawl
         run: npx cap add android
