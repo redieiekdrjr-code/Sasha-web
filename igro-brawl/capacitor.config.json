@@ -1,0 +1,6 @@
+{
+  "appId": "com.igro.brawl",
+  "appName": "IGRO Brawl",
+  "webDir": ".",
+  "bundledWebRuntime": false
+}
