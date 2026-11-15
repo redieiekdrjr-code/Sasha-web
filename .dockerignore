@@ -1,0 +1,7 @@
+.git
+.github
+node_modules
+android
+*.apk
+*.log
+.DS_Store
