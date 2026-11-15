@@ -29,9 +29,8 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient());
         web.setWebChromeClient(new WebChromeClient());
         setContentView(web);
-        String saved = prefs.getString("server", "");
-        if (saved.isEmpty()) askServer();
-        else openServer(saved);
+        String saved = prefs.getString("server", "https://sashaweb-o1lws0zt.back4.app");
+        openServer(saved);
     }
 
     private void askServer() {
