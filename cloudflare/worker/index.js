@@ -102,8 +102,11 @@ export class ChatHub {
       "DELETE FROM messages WHERE chat_id = ? AND id NOT IN (SELECT id FROM messages WHERE chat_id = ? ORDER BY created_at DESC LIMIT 500)",
       chatId, chatId
     );
-    for (const client of this.ctx.getWebSockets(chatId)) {
-      try { client.send(JSON.stringify({ type: "message", message })); } catch {}
+    for (const client of this.ctx.getWebSockets()) {
+      const joined = client.deserializeAttachment() || {};
+      if (joined.chatId === chatId) {
+        try { client.send(JSON.stringify({ type: "message", message })); } catch {}
+      }
     }
   }
 
